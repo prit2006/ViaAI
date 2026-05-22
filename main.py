@@ -1,11 +1,12 @@
-
 import os
 from typing import TypedDict, Annotated
 import operator
 
 import psycopg
-from langgraph. graph import StateGraph, START, END
+
+from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.postgres import PostgresSaver
+
 from langchain_core.messages import (
     AnyMessage,
     HumanMessage,
@@ -17,18 +18,23 @@ from langchain_groq import ChatGroq
 
 from tools.tavily_tool import tavily_search
 from tools.flight_tool import search_flights
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# =========================
 # LLM
+# =========================
 llm = ChatGroq(
     model="llama-3.3-70b-versatile"
 )
 
-
-# State
+# =========================
+# STATE
+# =========================
 class TravelState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
     user_query: str
@@ -37,49 +43,76 @@ class TravelState(TypedDict):
     itinerary: str
     llm_calls: int
 
-# Flight Agent
+# =========================
+# FLIGHT AGENT
+# =========================
 def flight_agent(state: TravelState):
+
     query = state["user_query"]
-    flight_data = search_flights(query)
+
+    try:
+        flight_data = search_flights(query)
+
+    except Exception as e:
+        flight_data = f"Flight search error: {str(e)}"
+
     return {
-        "flight_results": flight_data,
+        "flight_results": str(flight_data),
         "messages": [
-            AIMessage(content=f"Flight results fetched")
+            AIMessage(content="Flight results fetched")
         ],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
-# Hotel Agent
+# =========================
+# HOTEL AGENT
+# =========================
 def hotel_agent(state: TravelState):
+
     query = f"Best hotels for {state['user_query']}"
-    hotel_results = tavily_search(query)
+
+    try:
+        hotel_results = tavily_search(query)
+
+    except Exception as e:
+        hotel_results = f"Hotel search error: {str(e)}"
 
     return {
-        "hotel_results": hotel_results,
+        "hotel_results": str(hotel_results),
         "messages": [
             AIMessage(content="Hotel information fetched")
         ],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
-# Itinerary Agent
+# =========================
+# ITINERARY AGENT
+# =========================
 def itinerary_agent(state: TravelState):
 
     prompt = f"""
-    Create a travel itinerary.
-    User Query:
-    {state['user_query']}
+Create a detailed travel itinerary.
 
-    Flight Results:
-    {state['flight_results']}
+USER QUERY:
+{state['user_query']}
 
-    Hotel Results:
-    {state['hotel_results']}
-    """
+FLIGHT RESULTS:
+{state['flight_results']}
+
+HOTEL RESULTS:
+{state['hotel_results']}
+
+Include:
+1. Best flight suggestion
+2. Best hotel suggestion
+3. Day-wise itinerary
+4. Estimated budget
+5. Travel tips
+"""
 
     response = llm.invoke([
         SystemMessage(
-            content="You are an expert travel planner"
+            content="You are an expert AI travel planner."
         ),
         HumanMessage(content=prompt)
     ])
@@ -90,23 +123,30 @@ def itinerary_agent(state: TravelState):
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
-# Final Response Agent
+# =========================
+# FINAL RESPONSE AGENT
+# =========================
 def final_agent(state: TravelState):
 
     final_prompt = f"""
-    Generate final travel response.
+Generate a clean final travel response.
 
-    Flights:
-    {state['flight_results']}
+Flights:
+{state['flight_results']}
 
-    Hotels:
-    {state['hotel_results']}
+Hotels:
+{state['hotel_results']}
 
-    Itinerary:
-    {state['itinerary']}
-    """
+Itinerary:
+{state['itinerary']}
+
+Format properly with headings and bullet points.
+"""
 
     response = llm.invoke([
+        SystemMessage(
+            content="You are a professional travel assistant."
+        ),
         HumanMessage(content=final_prompt)
     ])
 
@@ -115,7 +155,9 @@ def final_agent(state: TravelState):
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
-
+# =========================
+# BUILD GRAPH
+# =========================
 graph = StateGraph(TravelState)
 
 graph.add_node("flight_agent", flight_agent)
@@ -129,16 +171,34 @@ graph.add_edge("hotel_agent", "itinerary_agent")
 graph.add_edge("itinerary_agent", "final_agent")
 graph.add_edge("final_agent", END)
 
+# =========================
+# POSTGRES CHECKPOINTER FIX
+# =========================
 
-# Persistent connection so both CLI and Streamlit can share the compiled app
-_conn = psycopg.connect(DATABASE_URL)
+# IMPORTANT:
+# autocommit=True fixes:
+# CREATE INDEX CONCURRENTLY cannot run inside transaction block
+
+_conn = psycopg.connect(
+    DATABASE_URL,
+    autocommit=True
+)
+
 checkpointer = PostgresSaver(_conn)
+
+# Setup database tables
 checkpointer.setup()
 
-app = graph.compile(checkpointer=checkpointer)
+# Compile graph
+app = graph.compile(
+    checkpointer=checkpointer
+)
 
-
+# =========================
+# MAIN
+# =========================
 if __name__ == "__main__":
+
     config = {
         "configurable": {
             "thread_id": "user_aarohi"
@@ -161,7 +221,12 @@ if __name__ == "__main__":
         config=config
     )
 
-    print("\nFINAL RESPONSE:\n")
+    print("\n========================")
+    print("FINAL RESPONSE")
+    print("========================\n")
 
     for msg in result["messages"]:
         print(msg.content)
+        print("\n------------------------\n")
+
+
