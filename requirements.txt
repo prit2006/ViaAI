@@ -1,0 +1,10 @@
+streamlit>=1.42
+Authlib>=1.3.2
+langchain-core
+langchain-groq
+langgraph
+langgraph-checkpoint-postgres
+psycopg[binary]
+python-dotenv
+requests
+tavily-python
