@@ -12,12 +12,33 @@ QUICK_PROMPTS = {
 
 
 def show_login_screen():
+    login_url = auth.build_login_url()
+
     st.markdown(
         """
-<div class="viaai-kicker">Private AI travel planning</div>
-<div class="viaai-title">ViaAI</div>
-<div class="viaai-subtitle">
-Sign in to build travel plans with flights, hotels, itineraries, and saved memory.
+<div class="start-shell">
+    <div class="start-grid"></div>
+    <div class="route-card route-card-one">
+        <strong>Mumbai</strong>
+        <span>to Tokyo</span>
+    </div>
+    <div class="route-card route-card-two">
+        <strong>Hotel</strong>
+        <span>4 options found</span>
+    </div>
+    <div class="route-line"></div>
+    <div class="start-copy">
+        <div class="viaai-kicker">Private AI travel planning</div>
+        <div class="viaai-title start-title">ViaAI</div>
+        <div class="viaai-subtitle start-subtitle">
+            Build interactive travel plans with flights, hotels, itineraries, and saved memory.
+        </div>
+        <div class="feature-row">
+            <span>Flight search</span>
+            <span>Hotel context</span>
+            <span>Itinerary builder</span>
+        </div>
+    </div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -42,12 +63,20 @@ client_kwargs = { "scope" = "profile email" }
         )
         st.stop()
 
-    st.link_button(
-        "Log in with Clerk",
-        auth.build_login_url(),
-        type="primary",
-        use_container_width=True,
-    )
+    login_col, signup_col = st.columns(2)
+    with login_col:
+        st.link_button(
+            "Log in",
+            login_url,
+            type="primary",
+            use_container_width=True,
+        )
+    with signup_col:
+        st.link_button(
+            "Sign up",
+            login_url,
+            use_container_width=True,
+        )
     st.stop()
 
 
