@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     config = {
         "configurable": {
-            "thread_id": "user_aarohi"
+            "thread_id": "Prit"
         }
     }
 
