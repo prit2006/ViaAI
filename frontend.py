@@ -28,6 +28,7 @@ def init_session_state():
         "query": "",
         "history": [],
         "running": False,
+        "dark_theme": True,
     }
 
     for key, value in defaults.items():
@@ -89,7 +90,7 @@ def main():
     )
 
     init_session_state()
-    apply_styles()
+    apply_styles(st.session_state.dark_theme)
     auth.handle_oauth_callback()
 
     if not auth.user_is_logged_in():

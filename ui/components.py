@@ -11,8 +11,25 @@ QUICK_PROMPTS = {
 }
 
 
+def render_theme_toggle():
+    mode_label = "Dark" if st.session_state.dark_theme else "Light"
+    st.markdown(
+        f'<div class="theme-toggle-label">{mode_label}</div>',
+        unsafe_allow_html=True,
+    )
+    st.toggle(
+        "Theme",
+        key="dark_theme",
+        label_visibility="collapsed",
+    )
+
+
 def show_login_screen():
     login_url = auth.build_login_url()
+
+    top_space, toggle_col = st.columns([4, 1])
+    with toggle_col:
+        render_theme_toggle()
 
     st.markdown(
         """
@@ -121,7 +138,7 @@ def render_hero():
 
     with action_col:
         st.write("")
-        st.write("")
+        render_theme_toggle()
         if st.button("Log out", use_container_width=True, key="main_logout"):
             auth.logout()
 
@@ -147,7 +164,20 @@ def render_quick_prompts():
 
 
 def render_plan_input():
-    st.markdown('<div class="section-label">Plan Builder</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+<div class="chat-shell">
+    <div class="chat-header">
+        <div>
+            <div class="section-label">Plan Builder</div>
+            <div class="chat-title">Ask ViaAI to build your trip</div>
+        </div>
+        <div class="chat-pulse">Live agents ready</div>
+    </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
     user_query = st.text_area(
         "Travel Query",
         value=st.session_state.query,
